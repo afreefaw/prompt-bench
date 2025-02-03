@@ -35,9 +35,12 @@ class MainWindow(QMainWindow):
         self.project_list.currentItemChanged.connect(self.on_project_selected)
         create_project_btn = QPushButton("Create New Project")
         create_project_btn.clicked.connect(self.create_project)
+        delete_project_btn = QPushButton("Delete Project")
+        delete_project_btn.clicked.connect(self.delete_project)
         
         left_layout.addWidget(projects_label)
         left_layout.addWidget(create_project_btn)
+        left_layout.addWidget(delete_project_btn)
         left_layout.addWidget(self.project_list)
         
         # Right panel - Stacked widget for different views
@@ -89,6 +92,39 @@ class MainWindow(QMainWindow):
             items = self.project_list.findItems(project_name, Qt.MatchExactly)
             if items:
                 self.project_list.setCurrentItem(items[0])
+    
+    def delete_project(self):
+        """Handle deleting the selected project"""
+        current = self.project_list.currentItem()
+        if not current:
+            QMessageBox.warning(self, "Error", "Please select a project to delete")
+            return
+        
+        project_name = current.text()
+        reply = QMessageBox.question(
+            self,
+            "Delete Project",
+            f"Are you sure you want to delete project '{project_name}'?\n\n"
+            "This will delete:\n"
+            "- All project prompts\n"
+            "- All test configurations\n"
+            "- All test results and validations\n\n"
+            "Note: Original data source files will not be deleted.",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No
+        )
+        
+        if reply == QMessageBox.Yes:
+            if self.project_manager.delete_project(project_name):
+                self.load_projects()
+                # Show welcome screen
+                self.right_panel.setCurrentIndex(0)
+            else:
+                QMessageBox.critical(
+                    self,
+                    "Error",
+                    f"Failed to delete project '{project_name}'"
+                )
     
     def on_project_selected(self, current, previous):
         """Handle project selection"""

@@ -2,3 +2,5 @@ PyQt5>=5.15.0
 requests>=2.25.0
 pandas>=1.2.0  # For Excel file support
 openpyxl>=3.0.0  # For Excel file support
+aiohttp>=3.9.0  # For async HTTP requests
+openai>=1.0.0  # For OpenAI validation

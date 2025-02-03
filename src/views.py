@@ -8,18 +8,18 @@ from datetime import datetime
 
 from project_manager import Project
 from test_runner import TestRunner, DataSourceHandler
-from results_viewer import ResultsViewer
+from results_viewer import ResultsViewer, TestRunsViewer
 
 class TestResultsDialog(QDialog):
-    def __init__(self, test_run, parent=None):
+    def __init__(self, test_run, project_name: str, test_runner, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Test Results")
         self.setModal(True)
         self.resize(800, 600)
         
         layout = QVBoxLayout(self)
-        viewer = ResultsViewer(test_run)
-        layout.addWidget(viewer)
+        self.viewer = ResultsViewer(test_run, project_name, test_runner)
+        layout.addWidget(self.viewer)
         
         close_btn = QPushButton("Close")
         close_btn.clicked.connect(self.accept)
@@ -82,12 +82,18 @@ class ProjectView(QWidget):
         
         add_source_btn = QPushButton("Add Data Source")
         add_source_btn.clicked.connect(self.add_data_source)
+        delete_source_btn = QPushButton("Delete Data Source")
+        delete_source_btn.clicked.connect(self.delete_data_source)
+        
+        source_buttons = QHBoxLayout()
+        source_buttons.addWidget(add_source_btn)
+        source_buttons.addWidget(delete_source_btn)
         
         editor_layout.addWidget(editor_header)
         editor_layout.addWidget(self.prompt_editor)
         editor_layout.addWidget(sources_header)
         editor_layout.addWidget(self.sources_list)
-        editor_layout.addWidget(add_source_btn)
+        editor_layout.addLayout(source_buttons)
         
         # Add test controls
         test_layout = QHBoxLayout()
@@ -95,9 +101,12 @@ class ProjectView(QWidget):
         run_test_btn.clicked.connect(self.run_test)
         view_results_btn = QPushButton("View Results")
         view_results_btn.clicked.connect(self.view_results)
+        start_validation_btn = QPushButton("Start Manual Validation")
+        start_validation_btn.clicked.connect(self.start_manual_validation)
         
         test_layout.addWidget(run_test_btn)
         test_layout.addWidget(view_results_btn)
+        test_layout.addWidget(start_validation_btn)
         editor_layout.addLayout(test_layout)
         
         # Add widgets to content layout
@@ -217,31 +226,52 @@ class ProjectView(QWidget):
             QMessageBox.critical(self, "Error", f"Test failed: {str(e)}")
     
     def view_results(self):
-        """View test results"""
-        # Get list of test runs
-        runs = self.test_runner.list_test_runs(self.project.name)
-        if not runs:
-            QMessageBox.information(self, "Info", "No test runs found")
-            return
-        
-        # Show dialog to select run
-        run_id, ok = QInputDialog.getItem(
-            self,
-            "Select Test Run",
-            "Choose a test run to view:",
-            runs,
-            0,
-            False
-        )
-        
-        if ok and run_id:
-            test_run = self.test_runner.load_results(self.project.name, run_id)
-            if test_run:
-                self.show_results_dialog(test_run)
-            else:
-                QMessageBox.critical(self, "Error", "Failed to load test results")
+        """View test runs and results"""
+        dialog = QDialog(self)
+        dialog.setWindowTitle(f"Test Runs - {self.project.name}")
+        dialog.resize(1200, 800)
+        layout = QVBoxLayout(dialog)
+        viewer = TestRunsViewer(self.project.name, self.test_runner, dialog)
+        layout.addWidget(viewer)
+        dialog.exec_()
+    
+    def delete_data_source(self):
+        """Delete the selected data source"""
+        current = self.sources_list.currentRow()
+        if current >= 0:
+            reply = QMessageBox.question(
+                self, "Delete Data Source",
+                "Are you sure you want to delete this data source?",
+                QMessageBox.Yes | QMessageBox.No
+            )
+            if reply == QMessageBox.Yes:
+                self.project.data_sources.pop(current)
+                self.project_manager._save_project(self.project)
+                self.load_project_data()
     
     def show_results_dialog(self, test_run):
         """Show the results dialog"""
-        dialog = TestResultsDialog(test_run, self)
+        dialog = TestResultsDialog(test_run, self.project.name, self.test_runner, self)
+        dialog.exec_()
+    
+    def start_manual_validation(self):
+        """Start manual validation for a test run"""
+        # Show test runs viewer in validation mode
+        dialog = QDialog(self)
+        dialog.setWindowTitle(f"Select Test Run to Validate - {self.project.name}")
+        dialog.resize(800, 600)
+        layout = QVBoxLayout(dialog)
+        
+        # Add validation instructions
+        instructions = QLabel(
+            "Double-click a test run to start validation.\n"
+            "You can validate results as Success (✓) or Failure (✗), or Skip (⚪) for later."
+        )
+        instructions.setStyleSheet("color: #666;")
+        layout.addWidget(instructions)
+        
+        # Add test runs viewer
+        viewer = TestRunsViewer(self.project.name, self.test_runner, dialog)
+        layout.addWidget(viewer)
+        
         dialog.exec_()

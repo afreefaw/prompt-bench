@@ -53,6 +53,7 @@ data/projects.json
 htmlcov/
 .pytest_cache/
 .hypothesis/
+config/openai_config.local.json
 
 
 # Distribution / packaging

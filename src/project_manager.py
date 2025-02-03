@@ -113,6 +113,16 @@ class ProjectManager:
                 return project
         return None
     
+    def _remove_project_results(self, project_name: str):
+        """Remove all test results for a project"""
+        project_results_dir = self.results_dir / project_name
+        if project_results_dir.exists():
+            # Remove all files in the directory
+            for file in project_results_dir.glob("*"):
+                file.unlink()
+            # Remove the directory itself
+            project_results_dir.rmdir()
+    
     def delete_project(self, name: str) -> bool:
         """Delete a project by name"""
         projects = self.load_projects()
@@ -120,7 +130,9 @@ class ProjectManager:
         projects = [p for p in projects if p.name != name]
         
         if len(projects) < initial_count:
+            # Save updated projects list
             self.save_projects(projects)
-            # TODO: Clean up project results directory
+            # Clean up project results
+            self._remove_project_results(name)
             return True
         return False
