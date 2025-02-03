@@ -151,19 +151,27 @@ class OpenAIValidator:
         if validation_prompt is None:
             validation_prompt = (
                 "You are a validation assistant. Your task is to validate if the model's "
-                "response appropriately addresses the given prompt based on the provided context.\n\n"
-                "Evaluate the response on:\n"
-                "1. Relevance to the prompt\n"
-                "2. Accuracy based on the context\n"
-                "3. Completeness of the answer\n\n"
+                "response is the correct output.\n\n"
+                "Evaluate whether the model's response is correct. You do not need to worry "
+                "about punctuation or capitalization, however otherwise the answer must be "
+                "in the requested format.\n"
                 "Respond with a JSON object containing:\n"
+                "- reason: brief explanation of your assessment\n"
                 "- valid: boolean indicating if the response is valid\n"
-                "- reason: brief explanation of your assessment"
+                "- format_fail: boolean indicating if there was a formatting issue\n"
+                "Example:\n"
+                "{\n"
+                "  \"reason\": \"The response is correct because the addresses shown are "
+                "likely a match, since the non-matching elements are unimportant, and the "
+                "response given was Yes,\",\n"
+                "  \"valid\": true,\n"
+                "  \"format_fail\": false\n"
+                "}\n"
             )
         
         messages = [
             {"role": "system", "content": validation_prompt},
-            {"role": "user", "content": f"Context:\n{context}\n\nPrompt:\n{prompt}\n\nResponse to validate:\n{response}"}
+            {"role": "user", "content": f"Prompt:\n{prompt}\n{context}\n\n\nResponse to validate:\n{response}"}
         ]
         
         if not self.session:
