@@ -1,13 +1,15 @@
 from PyQt5.QtWidgets import (
     QDialog, QVBoxLayout, QLabel, QLineEdit,
-    QPushButton, QMessageBox
+    QPushButton, QMessageBox, QComboBox
 )
+from parsers import discover_parsers
 
 class CreateProjectDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Create New Project")
         self.setModal(True)
+        self.parsers = discover_parsers()
         self.setup_ui()
         
     def setup_ui(self):
@@ -17,6 +19,16 @@ class CreateProjectDialog(QDialog):
         layout.addWidget(QLabel("Project Name:"))
         self.name_input = QLineEdit()
         layout.addWidget(self.name_input)
+        
+        # Parser selection
+        layout.addWidget(QLabel("Input Parser:"))
+        self.parser_combo = QComboBox()
+        if self.parsers:
+            self.parser_combo.addItems(self.parsers.keys())
+        else:
+            self.parser_combo.addItem("No parsers available")
+            self.parser_combo.setEnabled(False)
+        layout.addWidget(self.parser_combo)
         
         # Buttons
         button_layout = QVBoxLayout()
@@ -34,3 +46,9 @@ class CreateProjectDialog(QDialog):
     
     def get_project_name(self) -> str:
         return self.name_input.text().strip()
+    
+    def get_selected_parser(self) -> str:
+        """Get the selected parser type"""
+        if not self.parsers:
+            return None
+        return self.parser_combo.currentText()

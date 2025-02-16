@@ -77,7 +77,8 @@ class MainWindow(QMainWindow):
                 QMessageBox.warning(self, "Error", "Project name cannot be empty")
                 return
             
-            project = self.project_manager.create_project(project_name)
+            parser_type = dialog.get_selected_parser()
+            project = self.project_manager.create_project(project_name, parser_type)
             if project is None:
                 QMessageBox.warning(
                     self, "Error",

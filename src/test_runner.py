@@ -4,6 +4,8 @@ import aiohttp
 from datetime import datetime
 from pathlib import Path
 from typing import List, Dict, Optional
+from parsers.json_parser import JSONParser
+from parsers.excel_parser import ExcelParser
 
 class TestRunner:
     def __init__(self, model: str = "llama3.2", url: str = "http://localhost:11434/api/generate"):
@@ -179,60 +181,50 @@ class TestRunner:
         with open(file_path, 'w') as f:
             json.dump(test_run, f, indent=2)
 
+
+
 class DataSourceHandler:
     """
     Handles loading and parsing of data source files.
-    
-    Expected JSON format:
-    {
-        "contexts": [
-            "Context text 1",
-            "Context text 2",
-            ...
-        ]
-    }
+    Supports JSON files with either:
+    1. A "contexts" array of strings
+    2. A "documents" array with objects containing "content" fields
     
     For Excel files:
     - First column is assumed to contain the context text
     """
     
+    _parsers = {
+        '.json': JSONParser(),
+        '.xlsx': ExcelParser(),
+        '.xls': ExcelParser()
+    }
+    
     @staticmethod
     def load_contexts(file_path: str) -> List[str]:
-        """Load contexts from a data source file"""
+        """
+        Load contexts from a data source file using the appropriate parser.
+        
+        Args:
+            file_path (str): Path to the data source file
+            
+        Returns:
+            List[str]: List of context strings for testing
+            
+        Raises:
+            ValueError: If the file format is invalid
+            FileNotFoundError: If the file does not exist
+            TypeError: If the file type is not supported
+        """
         path = Path(file_path)
         if not path.exists():
             raise FileNotFoundError(f"Data source not found: {file_path}")
         
-        if path.suffix.lower() == '.json':
-            return DataSourceHandler._load_json(path)
-        elif path.suffix.lower() in ['.xlsx', '.xls']:
-            return DataSourceHandler._load_excel(path)
-        else:
-            raise ValueError(f"Unsupported file type: {path.suffix}")
-    
-    @staticmethod
-    def _load_json(path: Path) -> List[str]:
-        """Load contexts from a JSON file"""
-        with open(path) as f:
-            data = json.load(f)
-            
-            if not isinstance(data, dict) or "contexts" not in data:
-                raise ValueError(
-                    'Invalid JSON format. Expected: {"contexts": ["text1", "text2", ...]}'
-                )
-            
-            contexts = data["contexts"]
-            if not isinstance(contexts, list) or not all(isinstance(c, str) for c in contexts):
-                raise ValueError("The 'contexts' field must be an array of strings")
-            
-            return contexts
-    
-    @staticmethod
-    def _load_excel(path: Path) -> List[str]:
-        """Load contexts from an Excel file"""
-        import pandas as pd
-        df = pd.read_excel(path)
-        if df.empty:
-            raise ValueError("Excel file is empty")
-        # Use first column as contexts
-        return df.iloc[:, 0].astype(str).tolist()
+        suffix = path.suffix.lower()
+        parser = DataSourceHandler._parsers.get(suffix)
+        
+        if parser is None:
+            supported = ', '.join(DataSourceHandler._parsers.keys())
+            raise TypeError(f"Unsupported file type: {suffix}. Supported types: {supported}")
+        
+        return parser.parse(file_path)

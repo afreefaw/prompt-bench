@@ -4,8 +4,9 @@ from pathlib import Path
 from typing import List, Dict, Optional
 
 class Project:
-    def __init__(self, name: str, created: Optional[str] = None):
+    def __init__(self, name: str, parser_type: str = None, created: Optional[str] = None):
         self.name = name
+        self.parser_type = parser_type
         self.created = created or datetime.now().isoformat()
         self.prompts: List[Dict] = []
         self.data_sources: List[Dict] = []
@@ -34,6 +35,7 @@ class ProjectManager:
                 for project_data in data.get("projects", []):
                     project = Project(
                         name=project_data["name"],
+                        parser_type=project_data.get("parser_type"),
                         created=project_data["created"]
                     )
                     project.prompts = project_data.get("prompts", [])
@@ -50,6 +52,7 @@ class ProjectManager:
             "projects": [
                 {
                     "name": project.name,
+                    "parser_type": project.parser_type,
                     "created": project.created,
                     "prompts": project.prompts,
                     "dataSources": project.data_sources
@@ -64,14 +67,14 @@ class ProjectManager:
         except Exception as e:
             print(f"Error saving projects: {e}")
     
-    def create_project(self, name: str) -> Optional[Project]:
-        """Create a new project with the given name"""
+    def create_project(self, name: str, parser_type: str = None) -> Optional[Project]:
+        """Create a new project with the given name and parser type"""
         # Check if project name already exists
         existing = self.load_projects()
         if any(p.name == name for p in existing):
             return None
         
-        project = Project(name)
+        project = Project(name, parser_type)
         existing.append(project)
         self.save_projects(existing)
         return project
